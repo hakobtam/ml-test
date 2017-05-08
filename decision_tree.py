@@ -1,6 +1,10 @@
-import numpy as np
+#!/usr/bin/python3
+
+"""
+this module contains the DecisionTree class
+"""
+
 from dtOmitted import build_tree
-from dtOmitted import print_tree
 
 class DecisionTree(object):
     """
@@ -8,44 +12,51 @@ class DecisionTree(object):
 
     :param max_tree_depth: maximum depth for this tree.
     """
+
     def __init__(self, max_tree_depth):
         self.max_depth = max_tree_depth
+        self.tree = None
 
     def fit(self, X, Y):
         """
         :param X: 2 dimensional python list or numpy 2 dimensional array
         :param Y: 1 dimensional python list or numpy 1 dimensional array
         """
-        X_features = np.array(X)
-        Y_classes = np.array(Y)
-        data = np.column_stack((X_features,Y_classes))
-        self.tree = build_tree(data, max_depth = self.max_depth)
-     
+        if not isinstance(X, list):
+            X = X.tolist()
+        if not isinstance(Y, list):
+            Y = Y.tolist()
+
+        data = [X[i][:] + [Y[i]] for i in range(len(X))]
+        self.tree = build_tree(data, max_depth=self.max_depth)
+
+
     def predict(self, X):
         """
         :param X: 2 dimensional python list or numpy 2 dimensional array
         :return: Y - 1 dimension python list with labels
         """
-    
         if not isinstance(X, list):
             X = X.tolist()
+
         return [self.predict_one(self.tree, row) for row in X]
 
-    def predict_one(self, node, x):
+    def predict_one(self, node, row):
         """
         predicts the label recursively for just one piece of data
         :param node: current node in the decision tree, instance of DecisionNode
         :param x: the object to classify, list
         """
         if not node.is_leaf:
-            xval = x[node.column]
-            val = node.value
-            if isinstance(val, (int, float)):
-                if xval > val:
-                    return self.predict_one(node.true_branch, x)
-                return self.predict_one(node.false_branch, x)
+            x_value = row[node.column]
+            value = node.value
+            if isinstance(value, (int, float)):
+                if x_value > value:
+                    return self.predict_one(node.true_branch, row)
+                return self.predict_one(node.false_branch, row)
             else:
-                if xval == val:
-                    return self.predict_one(node.true_branch, x)
-                return self.predict_one(node.false_branch, x)
+                if x_value == value:
+                    return self.predict_one(node.true_branch, row)
+                return self.predict_one(node.false_branch, row)
         return node.results
+

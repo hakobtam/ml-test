@@ -87,119 +87,81 @@ def divide_data(data, feature_column, feature_val):
     return (data_split_1,data_split_2)
 
 def gini_impurity(data1, data2):
-
-    """
-    Given two 2D lists of compute their gini_impurity index. 
-    Remember that last column of the data lists is the Y
-    Lets assume y1 is y of data1 and y2 is y of data2.
-    gini_impurity shows how diverse the values in y1 and y2 are.
-    gini impurity is given by 
-
-    N1*sum(p_k1 * (1-p_k1)) + N2*sum(p_k2 * (1-p_k2))
-
-    where N1 is number of points in data1
-    p_k1 is fraction of points that have y value of k in data1
-    same for N2 and p_k2
-
-
-    param data1: A 2D python list
-    param data2: A 2D python list
-    return: a number - gini_impurity 
-    """
-
     
-    results_data1=dict_of_values(data1)
-    #entropy for data1
-    ent_data1=0.0
-    for r in results_data1.keys():
-        # current probability of class
-        p=float(results_data1[r])/len(data1) 
-        ent_data1=ent_data1+p*(1-p)
-        
-   #entropy for data2
-    results_data2=dict_of_values(data2)
-   #entropy for 2
-    ent_data2=0.0
-    for r in results_data2.keys():
-        # current probability of class
-        p=float(results_data2[r])/len(data2) 
-        ent_data2=ent_data2+(p)*(1-p)
-               
-
+    """
+        Given two 2D lists of compute their gini_impurity index.
+        Remember that last column of the data lists is the Y
+        Lets assume y1 is y of data1 and y2 is y of data2.
+        gini_impurity shows how diverse the values in y1 and y2 are.
+        gini impurity is given by
+        N1*sum(p_k1 * (1-p_k1)) + N2*sum(p_k2 * (1-p_k2))
+        where N1 is number of points in data1
+        p_k1 is fraction of points that have y value of k in data1
+        same for N2 and p_k2
+        param data1: A 2D python list
+        param data2: A 2D python list
+        return: a number - gini_impurity
+        """
+    
     N1 = len(data1)
+    p1 = np.array(list(dict_of_values(data1).values())) / N1
     N2 = len(data2)
-
-    return N1*ent_data1 + N2*ent_data2
-
+    p2 = np.array(list(dict_of_values(data2).values())) / N2
+    return N1 * np.sum(p1 * (1 - p1)) + N2 * np.sum(p2 * (1 - p2))
 
 
 def build_tree(data, current_depth=0, max_depth=1e10):
     """
-    build_tree is a recursive function.
-    What it does in the general case is:
-    1: find the best feature and value of the feature to divide the data into
-    two parts
-    2: divide data into two parts with best feature, say data1 and data2
-        recursively call build_tree on data1 and data2. this should give as two 
-        trees say t1 and t2. Then the resulting tree should be 
-        DecisionNode(...... true_branch=t1, false_branch=t2) 
-
-
-    In case all the points in the data have same Y we should not split any more, and return that node
-    For this function we will give you some of the code so its not too hard for you ;)
-    
-    param data: param data: A 2D python list
-    param current_depth: an integer. This is used if we want to limit the numbr of layers in the
-        tree
-    param max_depth: an integer - the maximal depth of the representing
-    return: an object of class DecisionNode
-
-    """
+        build_tree is a recursive function.
+        What it does in the general case is:
+        1: find the best feature and value of the feature to divide the data into
+        two parts
+        2: divide data into two parts with best feature, say data1 and data2
+        recursively call build_tree on data1 and data2. this should give as two
+        trees say t1 and t2. Then the resulting tree should be
+        DecisionNode(...... true_branch=t1, false_branch=t2)
+        In case all the points in the data have same Y we should not split any more, and return that node
+        For this function we will give you some of the code so its not too hard for you ;)
+        
+        param data: A 2D python list
+        param current_depth: an integer. This is used if we want to limit the number of layers in the tree
+        param max_depth: an integer - the maximal depth of the representing
+        return: an object of class DecisionNode
+        """
     if len(data) == 0:
         return DecisionNode(is_leaf=True)
-
+    
     if(current_depth == max_depth):
         return DecisionNode(current_results=dict_of_values(data))
-
+    
     if(len(dict_of_values(data)) == 1):
         return DecisionNode(current_results=dict_of_values(data), is_leaf=True)
-
-    #This calculates gini number for the data before dividing 
+    
     self_gini = gini_impurity(data, [])
 
-    #Below are the attributes of the best division that you need to find. 
-    #You need to update these when you find a division which is better
-    best_gini = 0.0
+    best_gini = 1e10
     best_column = None
     best_value = None
-    #best_split is tuple (data1,data2) which shows the two datas for the best divison so far
     best_split = None
-
-    column_count = len(data[0]) - 1
- 
-    for col in range(0, column_count):
-        # Getting all different values in this column
-        column_values = set([row[col] for row in data])
-        # In order to find the best feature split by all values
-        for value in column_values:
-            set1, set2 = divide_data(data, col, value)
-            # Assesing the entropy of the split
-            p = float(len(set1)) / len(data)
-            gain = self_gini - gini_impurity(set1,set2)
-            if gain > best_gini and len(set1) > 0 and len(set2) > 0:
-                best_gini = gain
+    
+    for col in range(len(data[0]) - 1):
+        for row in range(len(data)):
+            data1, data2 = divide_data(data, col, data[row][col])
+            if gini_impurity(data1, data2) < best_gini:
+                best_gini = gini_impurity(data1, data2)
                 best_column = col
-                best_value = value
-                best_split = (set1, set2)
-                
-    false_tree = build_tree(best_split[0], current_depth + 1, max_depth)
-    true_tree = build_tree(best_split[1], current_depth + 1, max_depth)
+                best_value = data[row][col]
+                best_split = (data1, data2)
 
-    return DecisionNode(column=best_column,
-                        value=best_value,
-                        false_branch=false_tree,
-                        true_branch=true_tree,
-                        current_results=dict_of_values(data))
+    if abs(self_gini - best_gini) < 1e-8:
+        return DecisionNode(current_results=dict_of_values(data), is_leaf=True)
+    else:
+        return DecisionNode(column=best_column,
+                            value=best_value,
+                            false_branch=build_tree(best_split[1], current_depth + 1, max_depth),
+                            true_branch=build_tree(best_split[0], current_depth + 1, max_depth),
+                            current_results=dict_of_values(data),
+                            is_leaf=False)
 
 
 

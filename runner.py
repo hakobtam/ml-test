@@ -1,21 +1,44 @@
-import numpy as np
-import matplotlib.pyplot as plt
+#!/usr/bin/python3
 
-from decision_tree import DecisionTree
+"""
+when run, this module compares performances of
+decision tree, random forest, and logistic regression
+"""
+
+import numpy as np
+from logistic_regression import logistic_regression
+from logistic_regression import logistic_predict
 from random_forest import RandomForest
-from logistic_regression import sigmoid
-from logistic_regression import normalized_gradient
-from logistic_regression import gradient_descent
+from decision_tree import DecisionTree
 
 
 def accuracy_score(Y_true, Y_predict):
-
+    
     acc = 0.
     for y_true, y_predicted in zip(Y_true, Y_predict):
         acc += (y_true == y_predicted)
-
+    
     return acc * 100. / len(Y_true)
 
+def get_decision_tree_accuracy(trainX, trainY, testX, testY):
+    dtree = DecisionTree(100)
+    dtree.fit(trainX, trainY)
+    dtree_predicted = dtree.predict(testX)
+    print(accuracy_score(testY, dtree_predicted))
+    return accuracy_score(testY, dtree_predicted)
+
+def get_random_forest_accuracy(trainX, trainY, testX, testY):
+    forest = RandomForest(10, 100)
+    forest.fit(trainX, trainY)
+    forest_predicted = forest.predict(testX)[0]
+    print(accuracy_score(testY, forest_predicted))
+    return accuracy_score(testY, forest_predicted)
+
+def get_log_regression_accuracy(trainX, trainY, testX, testY):
+    log_beta = logistic_regression(trainX, trainY, step_size=1e-1, max_steps=100)
+    log_predicted = logistic_predict(testX, log_beta)
+    print(accuracy_score(testY, log_predicted))
+    return accuracy_score(testY, log_predicted)
 
 def evaluate_performance():
     '''
@@ -35,86 +58,66 @@ def evaluate_performance():
     # Load Data
     filename = 'data/SPECTF.dat'
     data = np.loadtxt(filename, delimiter=',')
+
     X = data[:, 1:]
-    Y = np.array([data[:, 0]]).T
-    n, d = X.shape
+    Y = np.array(data[:, 0])
+    n = X.shape[0]
+    folds = 10
 
-    tree_accuracies = []
-    log_accuracies = []
+    dtree_accuracies = []
     forest_accuracies = []
+    log_accuracies = []
 
-    for trial in range(15):
-        # TODO: shuffle for each of the trials.
-        # the following code is for reference only.
+    np.random.seed(13)
+
+    for trial in range(10):
         idx = np.arange(n)
-        np.random.seed(2017)
         np.random.shuffle(idx)
         X = X[idx]
         Y = Y[idx]
-             
-        msk = np.random.rand(len(X)) <= 0.75
-        Xtrain = X[msk]
-        Xtest  = X[~msk]   
-        Ytrain = Y[msk]
-        Ytest  = Y[~msk]
 
-        # train the decision tree
-        classifier = DecisionTree(100)
-        print ("LOG 1")
-        classifier.fit(Xtrain, Ytrain)
-        
-        # output predictions on the remaining data
-        y_pred = classifier.predict(Xtest)
-        accuracy = accuracy_score(Ytest, y_pred)
-        print("accuracy of decision tree: ", accuracy_score(Ytest, y_pred))
+        print("trial", trial + 1)
 
-        #Random forest part
-        classifier = RandomForest(30,100)
-        #accuracy_score(Ytest, y_pred)
-        #classifier.fit(Xtrain, Ytrain)
+        train_size = int((folds - 1) / (folds) * len(X))
 
-        #accuracies = [accuracy_score(Ytest,tree.predict(Xtest)) for tree in classifier.trees]
-        #print(accuracies)
-        print ("LOG 2")
-        classifier.fit(Xtrain, Ytrain)
+        trainX = X[:train_size]
+        testX = X[train_size:]
+        trainY = Y[:train_size]
+        testY = Y[train_size:]
 
-        y_pred = classifier.predict(Xtest)[0]
-        forest_accuracies.append(accuracy_score(Ytest, y_pred))
-        print("accuracy of forest: ", accuracy_score(Ytest, y_pred))
+        # train decision tree
+        dtree_accuracies.append(get_decision_tree_accuracy(trainX, trainY, testX, testY))
 
-        dd = np.array(Xtrain)
-        data_train = np.column_stack((np.ones(dd.shape[0]), dd))
-        label_train = [-1 if a == 0 else 1 for a in Ytest]
-        beta_hat = gradient_descent(data_train, label_train, epsilon=1e-3, l=1, step_size=0.1, max_steps=200)
-        
-        y_pred = [1 if a >= 0 else -1 for a in data_train.dot(beta_hat)]
-        log_accuracies.append(accuracy_score(label_train, y_pred))
-        print("accuracy of logistic: ", accuracy_score(label_train, y_pred))
+        # train random forest
+        forest_accuracies.append(get_random_forest_accuracy(trainX, trainY, testX, testY))
+
+        # train logistic regression
+        log_accuracies.append(get_log_regression_accuracy(trainX, trainY, testX, testY))
+
 
     # compute the training accuracy of the model
-    meanDecisionTreeAccuracy = np.mean(tree_accuracies)
-    stddevDecisionTreeAccuracy = np.std(tree_accuracies)
+    mean_decision_tree_accuracy = np.mean(dtree_accuracies)
+    stddev_decision_tree_accuracy = np.std(dtree_accuracies)
+    mean_log_regression_accuracy = np.mean(log_accuracies)
+    stddev_log_regression_accuracy = np.std(log_accuracies)
+    mean_random_forest_accuracy = np.mean(forest_accuracies)
+    stddev_random_forest_accuracy = np.std(forest_accuracies)
 
-    meanLogisticRegressionAccuracy = np.mean(log_accuracies)
-    stddevLogisticRegressionAccuracy = np.std(log_accuracies)
-
-    meanRandomForestAccuracy = np.mean(forest_accuracies)
-    stddevRandomForestAccuracy = np.std(forest_accuracies)
-
-    stats = np.zeros((3, 3))
-    stats[0, 0] = meanDecisionTreeAccuracy
-    stats[0, 1] = stddevDecisionTreeAccuracy
-    stats[1, 0] = meanRandomForestAccuracy
-    stats[1, 1] = stddevRandomForestAccuracy
-    stats[2, 0] = meanLogisticRegressionAccuracy
-    stats[2, 1] = stddevLogisticRegressionAccuracy
-    return stats
+    # make certain that the return value matches the API specification
+    results = np.zeros((3, 2))
+    results[0, 0] = mean_decision_tree_accuracy
+    results[0, 1] = stddev_decision_tree_accuracy
+    results[1, 0] = mean_random_forest_accuracy
+    results[1, 1] = stddev_random_forest_accuracy
+    results[2, 0] = mean_log_regression_accuracy
+    results[2, 1] = stddev_log_regression_accuracy
+    return results
 
 
 # Do not modify from HERE...
 if __name__ == "__main__":
-    stats = evaluate_performance()
-    print ("Decision Tree Accuracy = ", stats[0, 0], " (", stats[0, 1], ")")
-    print ("Random Forest Tree Accuracy = ", stats[1, 0], " (", stats[1, 1], ")")
-    print ("Logistic Reg. Accuracy = ", stats[2, 0], " (", stats[2, 1], ")")
+    results = evaluate_performance()
+    print("Decision Tree Accuracy = ", results[0, 0], " (", results[0, 1], ")")
+    print("Random Forest Tree Accuracy = ", results[1, 0], " (", results[1, 1], ")")
+    print("Logistic Reg. Accuracy = ", results[2, 0], " (", results[2, 1], ")")
 # ...to HERE.

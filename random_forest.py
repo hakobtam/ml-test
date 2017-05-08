@@ -1,6 +1,9 @@
+"""
+this module contains the RandomForest class
+"""
+
 import numpy as np
 from decision_tree import DecisionTree
-from collections import defaultdict
 
 class RandomForest(object):
     """
@@ -15,30 +18,28 @@ class RandomForest(object):
         self.num_trees = num_trees
         self.max_tree_depth = max_tree_depth
         self.ratio_per_tree = ratio_per_tree
-        self.trees = None
+        self.trees = []
 
     def fit(self, X, Y):
         """
         :param X: 2 dimensional python list or numpy 2 dimensional array
         :param Y: 1 dimensional python list or numpy 1 dimensional array
         """
-        self.trees = []
-        total_size = int(len(Y))
-        batch_size = int(total_size* self.ratio_per_tree)
-        
-        X_features = np.array(X)
-        Y_classes = np.array(Y)
-        data = np.column_stack((X_features,Y_classes))
-        
-        for i in range(self.num_trees):
-            #1) shuffling the data with only order changes
-            np.random.shuffle(data)
-            
-            #2) building the tree
-            tree = DecisionTree(self.max_tree_depth) #Getting max_tree_depth in classes init
-            tree.fit(data[:batch_size,:-1], data[:batch_size,-1]) #building the actuall tree
-            
-            #3) Adding the newly built tree to the forest
+
+        if not isinstance(X, list):
+            X = X.tolist()
+        if not isinstance(Y, list):
+            Y = Y.tolist()
+
+        N = len(X)
+
+        for _ in range(self.num_trees):
+            batch_size = int(N*self.ratio_per_tree)
+            idx = np.random.choice(N, batch_size, replace=True)
+            trainX = [X[i] for i in idx]
+            trainY = [Y[i] for i in idx]
+            tree = DecisionTree(self.max_tree_depth)
+            tree.fit(trainX, trainY)
             self.trees.append(tree)
 
     def predict(self, X):
@@ -48,26 +49,34 @@ class RandomForest(object):
         list with labels, and conf being 1 dimensional list with
         confidences for each of the labels.
         """
+
+        Ys = [tree.predict(X) for tree in self.trees]
+
         Y = []
-        confidence = []
-        
-        toatal_label_count = defaultdict(int)
-        
-        for row in range(len(X)):
-            label_dict = defaultdict(int)
-            
-            for tree in range(self.num_trees):
-                #lets see how each tree predicts this
-                label_dict[self.trees[tree].predict(X)[row]] += 1
-                
-            toatal_label_count = np.array(list(label_dict.values()))
-            count = np.max(toatal_label_count)
-           # confidence_single_tree = float(count/len(toatal_label_count))
-            
-            index = np.argmax(toatal_label_count)
-            label = list(label_dict.keys())[index]
-            
-            Y.append(label)
-            confidence.append(count)
-        
-        return (Y, confidence)
+        conf = []
+        for pred in range(len(Ys[0])):
+            values = [Ys[tree][pred] for tree in range(len(Ys))]
+            values = sorted(values)
+
+            mode = values[0]
+            max_count = 1
+            current_count = 1
+            for i in range(1, len(values)):
+                if values[i] != values[i - 1]:
+                    if current_count > max_count:
+                        mode = values[i - 1]
+                        max_count = current_count
+                    current_count = 1
+                else:
+                    current_count += 1
+
+            # Not exceeding check
+            if current_count > max_count:
+                mode = values[-1]
+                max_count = max_count
+
+            Y.append(mode)
+            conf.append(max_count / self.num_trees)
+
+
+        return (Y, conf)
