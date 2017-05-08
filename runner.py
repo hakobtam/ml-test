@@ -36,7 +36,7 @@ def evaluate_performance():
     tree_accuracies = []
     log_accuracies = []
     forest_accuracies = []
-    for trial in range(7):
+    for trial in range(3):
         idx = np.arange(n)
         np.random.seed(13)
         np.random.shuffle(idx)
@@ -54,28 +54,34 @@ def evaluate_performance():
             Xtrain = [X[i] for i in range(len(X)) if i % folds != it]
             ytrain = [y[i] for i in range(len(y)) if i % folds != it]
 
+            #Decision tree
             classifier = DecisionTree(3)
             classifier.fit(Xtrain, ytrain)
 
             y_pred = classifier.predict(Xtest)
             tree_acc.append(accuracy_score(ytest, y_pred))
-            #print("acc of decision tree= ", accuracy_score(ytest, y_pred))
+            print("acc of decision tree= ", accuracy_score(ytest, y_pred))
 
-            classifier = RandomForest(27,100)
+            #Random forest
+            classifier = RandomForest(12,100)
             classifier.fit(Xtrain, ytrain)
 
             y_pred = classifier.predict(Xtest)[0]
             forest_acc.append(accuracy_score(ytest, y_pred))
-            #print("acc of forest= ", accuracy_score(ytest, y_pred))
+            print("acc of forest= ", accuracy_score(ytest, y_pred))
 
+            #Logistic regression
             dd = np.array(Xtrain)
             data_train = np.column_stack((np.ones(dd.shape[0]), dd))
             label_train = [-1 if a == 0 else 1 for a in ytrain]
             beta_hat = gradient_descent(data_train, label_train, epsilon=1e-3, l=1, step_size=0.1, max_steps=200)
-        
-            y_pred = [1 if a >= 0 else -1 for a in data_train.dot(beta_hat)]
-            log_acc.append(accuracy_score(label_train, y_pred))
-            #print("acc of logistic= ", accuracy_score(label_train, y_pred))
+
+            dd = np.array(Xtest)
+            data_test = np.column_stack((np.ones(dd.shape[0]), dd))
+            label_test = [-1 if a == 0 else 1 for a in ytest]
+            y_pred = [1 if a >= 0 else -1 for a in data_test.dot(beta_hat)]
+            log_acc.append(accuracy_score(label_test, y_pred))
+            print("acc of logistic= ", accuracy_score(label_test, y_pred))
 
         tree_accuracies.append(np.mean(tree_acc))
         forest_accuracies.append(np.mean(forest_acc))
