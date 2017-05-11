@@ -185,9 +185,9 @@ def print_tree(tree, indent=''):
         print('Column ' + str(tree.column) + ' : ' + str(tree.value) + '? ')
 
         # Print the branches
-        print(indent + 'True->', end="")
+        print(indent + 'True->')
         print_tree(tree.true_branch, indent + '  ')
-        print(indent + 'False->', end="")
+        print(indent + 'False->')
         print_tree(tree.false_branch, indent + '  ')
 
 
