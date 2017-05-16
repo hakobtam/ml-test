@@ -47,7 +47,7 @@ class DecisionTree(object):
         :param node: current node in the decision tree, instance of DecisionNode
         :param x: the object to classify, list
         """
-        if not node.is_leaf and current_depth != self.max_depth:
+        if not node.is_leaf:
             x_value = row[node.column]
             value = node.value
             if isinstance(value, (int, float)):

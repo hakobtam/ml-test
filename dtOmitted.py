@@ -51,6 +51,10 @@ def dict_of_values(data):
     dict_of_values(data)
     should return {'yes' : 3, 'no' :1}
     """
+    
+    #if not isinstance(data[0],list):
+       # data =data.tolist()
+    
     results = defaultdict(int)
     for row in data:
         r = row[len(row) - 1]
